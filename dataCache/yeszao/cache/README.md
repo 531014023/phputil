@@ -17,11 +17,13 @@
     {
         public function __call($name, $arguments)
         {
-            $redis = new \Redis();
-            $redis->connect('redis');
-    
-            // ***主要是这一行***
-            return (new Cache($redis))->get($this, $name, $arguments);
+            $redis = Redis::getRedis();
+            $config = [
+                'prefix' => '',
+                'expire' => 3600,       // 缓存过期时间
+                'emptyExpire' => 0     // 空值的缓存过期时间
+            ];
+            return Cache::getInstance($redis,$config)->get($this,$method,$args);
         }
     }
     ```

@@ -15,23 +15,25 @@ if (!file_exists($savePath)) {
     mkdir($savePath, 0777, true);
 }
 $tmpFile = $savePath . $filename;
-fopen($tmpFile, "r");
-chmod($tmpFile, 0777);
- //删除之前备份的数据
-$dh=opendir($savePath);
-if($dh){
-    while ($file=readdir($dh)) {
-        if($file!="." && $file!="..") {
-            $fullpath=$savePath."/".$file;
-            if(!is_dir($fullpath)) {
-                if(strpos($fullpath,$cfg_dbname) !== false) {
-                    unlink($fullpath);
+if(file_exists($tmpFile)) {
+    fopen($tmpFile, "r");
+    chmod($tmpFile, 0777);
+    //删除之前备份的数据
+    $dh = opendir($savePath);
+    if ($dh) {
+        while ($file = readdir($dh)) {
+            if ($file != "." && $file != "..") {
+                $fullpath = $savePath . "/" . $file;
+                if (!is_dir($fullpath)) {
+                    if (strpos($fullpath, $cfg_dbname) !== false) {
+                        unlink($fullpath);
+                    }
                 }
             }
         }
-    }
-    closedir($dh);
-} //删除之前备份的数据
+        closedir($dh);
+    } //删除之前备份的数据
+}
 // 用MySQLDump命令导出数据库
 $bool_dump = exec("mysqldump --single-transaction -h$dbhost -u$cfg_dbuser -p$cfg_dbpwd --default-character-set=utf8 $cfg_dbname {$ignore_table} | gzip > " . $tmpFile);
 if (0 == $bool_dump) {

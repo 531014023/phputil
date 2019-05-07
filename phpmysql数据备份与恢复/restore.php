@@ -12,7 +12,7 @@ if($dh){
         if($file!="." && $file!="..") {
             $fullpath=$savePath."/".$file;
             if(!is_dir($fullpath)) {
-                if(strpos($fullpath,$db_source) !== false) {
+                if(strpos($fullpath,'-'.$db_source.'.') !== false) {
                     $result = exec("gunzip < {$fullpath} | mysql -h{$host} -P{$port} -u{$user} -p{$password} {$db_name}");
                     if(0 == $result) {
                         $arr = json_encode(array('msg' => 1, 'url' => $fullpath));

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <!-- 最新版本的 Bootstrap 核心 CSS 文件 -->
+    <!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">-->
+
+    <!-- 可选的 Bootstrap 主题文件（一般不用引入） -->
+    <!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">-->
+
+    <script src="https://cdn.bootcss.com/jquery/3.0.0/jquery.min.js"></script>
+    <!-- 最新的 Bootstrap 核心 JavaScript 文件 -->
+    <!--<script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>-->
+    <link rel="stylesheet" href="layui-2.4.5/css/layui.css">
+    <script src="layui-2.4.5/layui.js"></script>
+    <title>挂课</title>
+    <style>
+        .content{
+            max-height: 250px;
+            max-width: 100%;
+            overflow-y: auto;
+        }
+        .log{
+            max-height: 200px;
+            max-width: 100%;
+            overflow-y: auto;
+        }
+    </style>
+    <script>if (typeof module === 'object') {window.jQuery = window.$ = module.exports;}</script>
+</head>
+<body class="layui-container">
+<form class="layui-form" action="http://ouchn.93dd.top/ouchn_login.php?get=guake" style="margin-top: 20px;" id="guake_form">
+    <div class="layui-form-item">
+        <label class="layui-form-label">学号</label>
+        <div class="layui-input-inline">
+            <input type="text" name="username" id="username" required  lay-verify="required" placeholder="请输入学号" autocomplete="on" class="layui-input">
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">密码</label>
+        <div class="layui-input-inline">
+            <input type="password" name="password" id="password" required lay-verify="required" placeholder="请输入密码" autocomplete="on" class="layui-input">
+        </div>
+        <div class="layui-form-mid layui-word-aux">身份证号年月日</div>
+    </div>
+    <div class="layui-form-item">
+        <label class="layui-form-label">学科</label>
+        <div class="layui-input-inline">
+            <select name="class_name" lay-verify="required" id="class_name">
+                <option value=""></option>
+            </select>
+        </div>
+    </div>
+    <div class="layui-form-item">
+        <div class="layui-input-block">
+            <button class="layui-btn" id="submit">开始挂课</button>
+            <button class="layui-btn layui-btn-primary" id="log">查看今日记录</button>
+            <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+        </div>
+    </div>
+</form>
+<!--<form action="http://ouchn.93dd.top/ouchn_login.php?get=guake" class="">-->
+    <!--<input type="text" placeholder="请输入学号" name="username" class="">-->
+    <!--<input type="password" placeholder="请输入密码" name="password">-->
+    <!--<select name="class_name">-->
+        <!--<option value="">请选择学科</option>-->
+    <!--</select>-->
+    <!--<input type="hidden" placeholder="请输入验证码" name="code" value="0">-->
+    <!--<img src="" alt="">-->
+    <!--<input type="button" value="提交" id="submit">-->
+<!--</form>-->
+<!--<form action="http://ouchn.93dd.top/ouchn_login.php?get=get_code" class="hide">-->
+    <!--<input type="text" placeholder="请输入学号" name="username" class="" value="1751001459734">-->
+    <!--<input type="password" placeholder="请输入密码" name="password" value="19930615">-->
+    <!--<select name="class_name">-->
+        <!--<option value="">请选择学科</option>-->
+    <!--</select>-->
+    <!--<input type="button" value="提交" id="get_code">-->
+<!--</form>-->
+<p>执行过程:</p>
+<div class="layui-text layui-word-aux log">
+
+</div>
+<p>执行记录:</p>
+<div class="content layui-word-aux layui-text">
+
+</div>
+</body>
+<script>
+    layui.use(['form','layer','element'],function (form,layer,element) {
+        $("#submit").click(function (e) {
+            e.preventDefault();
+            if(!$("input[name=username]").val()){
+                return layer.tips("请输入学号!","#username");
+            }
+            if(!$("input[name=password]").val()){
+                return layer.tips("请输入密码!","#password");
+            }
+            if(!$("select[name=class_name]").val()){
+                return layer.tips("请选择学科!","#class_name");
+            }
+            var url = $("#guake_form").attr('action');
+            var param = $("#guake_form").serialize();
+            layer.msg('挂课中...', {
+                icon: 16
+                ,shade: 0.01
+                ,time: 0
+            });
+            $.get(url+"&"+param,function (res) {
+                res = res.replace(/[\n\r]/g,'<br/>');
+                $(".log").html(res);
+                getlog(param);
+            });
+            return false;
+        });
+
+        $("#log").click(function (e) {
+            e.preventDefault();
+            if(!$("input[name=username]").val()){
+                return layer.tips("请输入学号!","#username");
+            }
+            if(!$("input[name=password]").val()){
+                return layer.tips("请输入密码!","#password");
+            }
+            if(!$("select[name=class_name]").val()){
+                return layer.tips("请选择学科!","#class_name");
+            }
+            var param = $("#guake_form").serialize();
+            layer.load();
+            getlog(param);
+        });
+
+        function getClass() {
+            $.get("http://ouchn.93dd.top/ouchn_login.php?get=get_class",function (res) {
+                var class_map = res.class_map;
+                var class_name_map = res.class_name_map;
+                var option = '';
+                $.each(class_map,function ($class,class_item) {
+                    option += "<option value=\""+$class+"\">"+class_name_map[$class]+"</option>";
+
+                });
+                $("select[name=class_name]").append(option);
+                form.render('select');
+            },'json');
+        }
+
+        function getlog(param) {
+            $.get('http://ouchn.93dd.top/ouchn_login.php?get=log&'+param,function (res) {
+                $(".content").html(res);
+                layer.closeAll();
+            });
+        }
+
+        getClass();
+    });
+// $("#get_code").click(function () {
+//    var url = $(this).parent().attr('action');
+//    var param = $(this).parent().serialize();
+//    $.get(url+"&"+param,function (res) {
+//         console.log(res);
+//         var data = JSON.parse(res);
+//         if(data.code === 0) {
+//             $("form").eq(0).find('img').attr('src', data.data);
+//             $("form").eq(0).removeClass('hide');
+//             $("form").eq(1).addClass('hide');
+//             return;
+//         }
+//         getlog(param);
+//    });
+// });
+
+</script>
+</html>

@@ -1,5 +1,6 @@
 <?php
 set_time_limit(0);
+exec("CHCP 65001");
 require_once __DIR__."/phpQuery/phpQuery.php";
 
 /**
@@ -12,6 +13,10 @@ class Ouchn
     public $links = [];
     public $clickLinks = [];
     public $cookie = '';
+    public $cookie_file;
+    public $username;
+    public $class_map = [];
+    public $class_name_map = [];
     public function setLinks($link = null)
     {
         if(in_array($link,$this->clickLinks))
@@ -27,7 +32,7 @@ class Ouchn
      */
     public function getLink()
     {
-        return array_pop($this->links);
+       return array_pop($this->links);
     }
 
     public function index($class_name)
@@ -46,29 +51,93 @@ class Ouchn
         }
     }
 
-    public function faxue()
+    public function __construct()
     {
-        $this->minfaxue1();
-        $this->minfaxue2();
-        $this->xingshisusongfa();
-        $this->xingfaxue2();
-        $this->huanjingbaohufa();
-        $this->falvwenshu();
+        $this->class_map['2019_up_faxue'] = [
+            'hunyinjiatingfa',
+            'minshisusongfa',
+            'zhongcaifa'
+        ];
+        $this->class_map['2019_up_kuaiji'] = [
+            'guanlikuaiji',
+            'jinrongshichang',
+            'qiyexinxiguanli',
+            'caiwu',
+            'caikuai',
+        ];
+        $this->class_name_map['2019_up_faxue'] = '2019法学上';
+        $this->class_name_map['hunyinjiatingfa'] = '婚姻家庭法';
+        $this->class_name_map['minshisusongfa'] = '民事诉讼法';
+        $this->class_name_map['zhongcaifa'] = '仲裁法';
+        $this->class_name_map['2019_up_kuaiji'] = '2019会计上';
+        $this->class_name_map['guanlikuaiji'] = '管理会计';
+        $this->class_name_map['jinrongshichang'] = '金融市场';
+        $this->class_name_map['qiyexinxiguanli'] = '企业信息管理';
+        $this->class_name_map['caiwu'] = '财务';
+        $this->class_name_map['caikuai'] = '财会';
     }
 
-    public function kuaiji()
+    public function actionClickClass($key){
+        echo "开始点击".$this->class_name_map[$key]."...".PHP_EOL;
+        $class_arr = $this->class_map[$key];
+        foreach ($class_arr as $class){
+            call_user_func(array($this,$class));
+        }
+    }
+    public function faxue($key = null)
     {
-        $this->chengbenkuaiji();
-        $this->kuaijidiansuanhua();
-        $this->xifangjingjixue();
-        $this->jingjifalvjichu();
-        $this->zhongjicaiwukuaiji2();
+
+        echo "开始点击法学..".PHP_EOL;
+//        $this->minfaxue1();
+//        $this->minfaxue2();
+//        $this->xingshisusongfa();
+//        $this->xingfaxue2();
+//        $this->huanjingbaohufa();
+//        $this->falvwenshu();
+        if($key){
+            $class_arr = $this->class_map[$key];
+            foreach ($class_arr as $class){
+                call_user_func(array($this,$class));
+            }
+        }else {
+            $this->hunyinjiatingfa();
+            $this->minshisusongfa();
+            $this->zhongcaifa();
+        }
+    }
+
+    public function kuaiji($key = null)
+    {
+        echo "开始点击会计..".PHP_EOL;
+//        $this->chengbenkuaiji();
+//        $this->kuaijidiansuanhua();
+//        $this->xifangjingjixue();
+//        $this->jingjifalvjichu();
+//        $this->zhongjicaiwukuaiji2();
+        if($key){
+            $class_arr = $this->class_map[$key];
+            foreach ($class_arr as $class){
+                call_user_func(array($this,$class));
+            }
+        }else {
+            $this->guanlikuaiji();
+            $this->jinrongshichang();
+            $this->qiyexinxiguanli();
+            $this->caiwu();
+            $this->caikuai();
+        }
     }
 
     public function writeLog($log_name,$content,$is_end = false,$is_write = true)
     {
+        $date = date('Ymd');
+        $log_name .= $this->username;
         if($is_write) {
-            $log_txt = dirname(__FILE__) . '/ouchn_log/' . $log_name . '.log';
+            $dir = dirname(__FILE__) . '/ouchn_log/'.$date;
+            if(!file_exists($dir)) {
+                mkdir($dir);
+            }
+            $log_txt = $dir.'/' . $log_name . '.log';
             file_put_contents($log_txt, '|time:' . time() . '|时间:' . date('Y-m-d H:i:s', time()) . PHP_EOL, FILE_APPEND);
             file_put_contents($log_txt, $content . PHP_EOL, FILE_APPEND);
         }
@@ -81,7 +150,10 @@ class Ouchn
 
     public function check_log($log_name)
     {
-        $log_txt = dirname(__FILE__) . '/ouchn_log/'.$log_name.'.log';
+        $date = date('Ymd');
+        $log_name .= $this->username;
+        $dir = $dir = dirname(__FILE__) . '/ouchn_log/'.$date;
+        $log_txt = $dir.'/' . $log_name . '.log';
         if(file_exists($log_txt))
         {
             return false;
@@ -91,7 +163,7 @@ class Ouchn
 
     function http_get($url)
     {
-        $cookie = dirname(__FILE__).'/cookie.txt';
+        $cookie = $this->cookie_file ? : dirname(__FILE__).'/ouchn/cookie.txt';
         $headers = [
             'User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'
         ];
@@ -100,17 +172,314 @@ class Ouchn
         curl_setopt($ch,CURLOPT_HEADER,$headers);
         curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-//        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie);
-//        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie);
         if(!empty($this->cookie)) {
             if(!file_exists($cookie))
             {
                 curl_setopt($ch, CURLOPT_COOKIE, $this->cookie);
             }
         }
+        if(file_exists($cookie)){
+            curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie);
+            curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie);
+        }
         $res = curl_exec($ch);
         curl_close($ch);
         return $res;
+    }
+
+    public function guanlikuaiji(){
+        if(!$this->check_log('guanlikuaiji')){
+            $this->writeLog('guanlikuaiji','管理会计已经学习了',true);
+            return;
+        }
+        $base = 'http://sichuan.ouchn.cn/mod/book/';
+//        $base = '';
+        $link = "http://sichuan.ouchn.cn/mod/book/view.php?id=399041&chapterid=18218";
+        $content = $this->http_get($link);
+        phpQuery::newDocumentHTML($content);
+        $list = pq('#block-region-side-pre li a');
+        $count = 0;
+        foreach ($list as $item){
+            $href = pq($item)->attr('href');
+            if(strpos($href,'javascript') !== false){
+                continue;
+            }
+            $url = $base.$href;
+            $this->writeLog('guanlikuaiji',$url);
+            $this->http_get($url);
+            $count++;
+            if($count>=20){
+                break;
+            }
+        }
+        phpQuery::$documents = [];
+        if($count < 5)
+        {
+            $this->writeLog('guanlikuaiji','管理会计cookie已失效',true,false);
+        }else{
+            $this->writeLog('guanlikuaiji','管理会计点击了:'.$count.'次',true);
+        }
+    }
+
+    public function jinrongshichang(){
+        if(!$this->check_log('jinrongshichang')){
+            $this->writeLog('jinrongshichang','金融市场已经学习了',true);
+            return;
+        }
+        $link1 = "http://sichuan.ouchn.cn/course/view.php?id=129&section=2";
+        $link2 = "http://sichuan.ouchn.cn/course/view.php?id=129&section=4";
+        $link_arr = compact('link1','link2');
+        $count = 0;
+        $stop = false;
+        foreach ($link_arr as $link){
+            $num = explode('&section=',$link);
+            $content = $this->http_get($link);
+            phpQuery::newDocumentHTML($content);
+            $list = pq("#section-{$num[1]} li a");
+            foreach ($list as $a){
+                $href = pq($a)->attr('href');
+                $this->writeLog('jinrongshichang',$href);
+                $this->http_get($href);
+                $count++;
+                if($count>=20){
+                    $stop = true;
+                    break;
+                }
+            }
+            if($stop)
+            {
+                break;
+            }
+            phpQuery::$documents = [];
+        }
+        if($count < 5)
+        {
+            $this->writeLog('jinrongshichang','金融市场cookie已失效',true,false);
+        }else{
+            $this->writeLog('jinrongshichang','金融市场点击了:'.$count.'次',true);
+        }
+    }
+
+    public function qiyexinxiguanli(){
+        if(!$this->check_log('qiyexinxiguanli')){
+            $this->writeLog('qiyexinxiguanli','企业信息管理已经学习了',true);
+            return;
+        }
+        $link = "http://sichuan.ouchn.cn/course/view.php?id=156";
+        $content = $this->http_get($link);
+        phpQuery::newDocumentHTML($content);
+        $count = 0;
+        $stop = false;
+        for ($i = 4;$i<9;$i++){
+            $list = pq("#section-{$i} a");
+            foreach ($list as $a){
+                $href = pq($a)->attr('href');
+                $this->writeLog('qiyexinxiguanli',$href);
+                $this->http_get($href);
+                $count++;
+                if($count>=20){
+                    $stop = true;
+                    break;
+                }
+            }
+            if($stop)
+            {
+                break;
+            }
+        }
+        phpQuery::$documents = [];
+        if($count < 5)
+        {
+            $this->writeLog('qiyexinxiguanli','企业信息管理cookie已失效',true,false);
+        }else{
+            $this->writeLog('qiyexinxiguanli','企业信息管理点击了:'.$count.'次',true);
+        }
+    }
+
+    public function caiwu(){
+        if(!$this->check_log('caiwu')){
+            $this->writeLog('caiwu','财务管理已经学习了',true);
+            return;
+        }
+        $link = "http://sichuan.ouchn.cn/course/view.php?id=3435";
+        $content = $this->http_get($link);
+        phpQuery::newDocumentHTML($content);
+        $td_list = pq("#section-1 tr td:nth-child(2) a");
+        $count = 0;
+        $stop = false;
+        foreach ($td_list as $td_a){
+            $href = pq($td_a)->attr('href');
+            $content = $this->http_get($href);
+            phpQuery::newDocumentHTML($content);
+            $list = pq("ul.img-text li a");
+            foreach ($list as $item){
+                $href = pq($item)->attr('href');
+                $this->writeLog('caiwu',$href);
+                $this->http_get($href);
+                $count++;
+                if($count>=20){
+                    $stop = true;
+                    break;
+                }
+            }
+            $this->writeLog('caiwu',$href);
+            $count++;
+            if($count>=20){
+                break;
+            }
+            if($stop)
+            {
+                break;
+            }
+        }
+        phpQuery::$documents = [];
+        if($count < 5)
+        {
+            $this->writeLog('caiwu','财务管理cookie已失效',true,false);
+        }else{
+            $this->writeLog('caiwu','财务管理点击了:'.$count.'次',true);
+        }
+    }
+
+    public function caikuai(){
+        if(!$this->check_log('caikuai')){
+            $this->writeLog('caikuai','财会法规与职业道德已经学习了',true);
+            return;
+        }
+        $link = "http://sichuan.ouchn.cn/course/view.php?id=1414";
+        $content = $this->http_get($link);
+        phpQuery::newDocumentHTML($content);
+        $count = 0;
+        $stop = false;
+        for ($i = 1;$i<7;$i++){
+            $list = pq("#section-{$i} li a");
+            foreach ($list as $item){
+                $href = pq($item)->attr('href');
+                $this->writeLog('caikuai',$href);
+                $this->http_get($href);
+                $count++;
+                if($count>=20){
+                    $stop = true;
+                    break;
+                }
+            }
+            if($stop){
+                break;
+            }
+        }
+        phpQuery::$documents = [];
+        if($count < 5)
+        {
+            $this->writeLog('caikuai','财会法规与职业道德cookie已失效',true,false);
+        }else{
+            $this->writeLog('caikuai','财会法规与职业道德点击了:'.$count.'次',true);
+        }
+    }
+
+    public function hunyinjiatingfa(){
+        if(!$this->check_log('hunyinjiatingfa')){
+            $this->writeLog('hunyinjiatingfa','婚姻家庭法已经学习了',true);
+            return;
+        }
+        $link = "http://sichuan.ouchn.cn/course/view.php?id=24";
+        $content = $this->http_get($link);
+        phpQuery::newDocumentHTML($content);
+        $section = [4,7,8];
+        $count = 0;
+        $stop = false;
+        foreach ($section as $i){
+            $list = pq("#section-{$i} li a");
+            foreach ($list as $item){
+                $href = pq($item)->attr('href');
+                $this->writeLog('hunyinjiatingfa',$href);
+                $this->http_get($href);
+                $count++;
+                if($count>=20){
+                    $stop = true;
+                    break;
+                }
+            }
+            if($stop){
+                break;
+            }
+        }
+        phpQuery::$documents = [];
+        if($count < 5)
+        {
+            $this->writeLog('hunyinjiatingfa','婚姻家庭法cookie已失效',true,false);
+        }else{
+            $this->writeLog('hunyinjiatingfa','婚姻家庭法点击了:'.$count.'次',true);
+        }
+    }
+
+    public function minshisusongfa(){
+        if(!$this->check_log('minshisusongfa')){
+            $this->writeLog('minshisusongfa','民事诉讼法已经学习了',true);
+            return;
+        }
+        $count = 0;
+        $stop = false;
+        for($i = 2;$i<22;$i++){
+            $link = "http://sichuan.ouchn.cn/course/view.php?id=3362&section={$i}";
+            $content = $this->http_get($link);
+            phpQuery::newDocumentHTML($content);
+            $list = pq("ul.section li a");
+            foreach ($list as $item){
+                $href = pq($item)->attr('href');
+                if(strpos($href,'http://') === false){
+                    continue;
+                }
+                $class = pq($item)->attr('class');
+                if(strpos($class,'btn') !== false){
+                    continue;
+                }
+                $this->writeLog('minshisusongfa',$href);
+                $this->http_get($href);
+                $count++;
+                if($count>=20){
+                    $stop = true;
+                    break;
+                }
+            }
+            if($stop){
+                break;
+            }
+            phpQuery::$documents = [];
+        }
+        if($count < 5)
+        {
+            $this->writeLog('minshisusongfa','民事诉讼法cookie已失效',true,false);
+        }else{
+            $this->writeLog('minshisusongfa','民事诉讼法点击了:'.$count.'次',true);
+        }
+    }
+
+    public function zhongcaifa(){
+        if(!$this->check_log('zhongcaifa')){
+            $this->writeLog('zhongcaifa','仲裁法已经学习了',true);
+            return;
+        }
+        $link = "http://sichuan.ouchn.cn/course/view.php?id=1022";
+        $content = $this->http_get($link);
+        phpQuery::newDocumentHTML($content);
+        $list = pq("#section-3 li a");
+        $count = 0;
+        foreach ($list as $item){
+            $href = pq($item)->attr('href');
+            $this->writeLog('zhongcaifa',$href);
+            $this->http_get($href);
+            $count++;
+            if($count>=20){
+                break;
+            }
+        }
+        phpQuery::$documents = [];
+        if($count < 5)
+        {
+            $this->writeLog('zhongcaifa','仲裁法cookie已失效',true,false);
+        }else{
+            $this->writeLog('zhongcaifa','仲裁法点击了:'.$count.'次',true);
+        }
     }
 
     public function minfaxue1()
@@ -135,7 +504,6 @@ class Ouchn
                 $this->http_get($href);
                 $count++;
                 if($count>=20){
-                    $this->writeLog('minfaxue1','已经点了20个了',true);
                     $stop = true;
                     break;
                 }
@@ -176,7 +544,6 @@ class Ouchn
                 $this->http_get($href);
                 $count++;
                 if($count>=20){
-                    $this->writeLog('minfaxue2','已经点了20个了',true);
                     $stop = true;
                     break;
                 }
@@ -214,7 +581,6 @@ class Ouchn
             $this->http_get($href);
             $count++;
             if($count>=20){
-                $this->writeLog('xingshisusongfa','已经点了20个了',true);
                 break;
             }
         }
@@ -249,7 +615,6 @@ class Ouchn
                 $this->http_get($href);
                 $count++;
                 if($count>=20){
-                    $this->writeLog('xingfaxue2','已经点了20个了',true);
                     $stop = true;
                     break;
                 }
@@ -290,7 +655,6 @@ class Ouchn
                 $this->http_get($href);
                 $count++;
                 if($count>=20){
-                    $this->writeLog('huanjingbaohufa','已经点了20个了',true);
                     $stop = true;
                     break;
                 }
@@ -331,7 +695,6 @@ class Ouchn
                 $this->http_get($href);
                 $count++;
                 if($count>=20){
-                    $this->writeLog('falvwenshu','已经点了20个了',true);
                     $stop = true;
                     break;
                 }
@@ -369,7 +732,6 @@ class Ouchn
             $this->http_get($href);
             $count++;
             if($count>=20){
-                $this->writeLog('chengbenkuaiji','已经点了20个了',true);
                 break;
             }
         }
@@ -401,7 +763,6 @@ class Ouchn
             $this->http_get($href);
             $count++;
             if($count>=20){
-                $this->writeLog('kuaijidiansuanhua','已经点了20个了',true);
                 break;
             }
         }
@@ -433,7 +794,6 @@ class Ouchn
             $this->http_get($href);
             $count++;
             if($count>=20){
-                $this->writeLog('xifangjingjixue','已经点了20个了',true);
                 break;
             }
         }
@@ -467,7 +827,6 @@ class Ouchn
             $this->http_get($href);
             $count++;
             if($count>=20){
-                $this->writeLog('jingjifalvjichu','已经点了20个了',true);
                 break;
             }
         }
@@ -502,7 +861,6 @@ class Ouchn
                 $this->http_get($href);
                 $count++;
                 if($count>=20){
-                    $this->writeLog('zhongjicaiwukuaiji2','已经点了20个了',true);
                     $stop = true;
                     break;
                 }
@@ -523,6 +881,46 @@ class Ouchn
 
 }
 
-$ouchn = new Ouchn();
-$ouchn->cookie = 'b_t_s_100300=98572d51-f500-45a2-8e0c-2b35d4d30afd; up_first_date=2018-06-10; Hm_lvt_a1d2fe485c96ce7e0b6dcb0d5ac8fb83=1528618405; up_beacon_id_100300=98572d51-f500-45a2-8e0c-2b35d4d30afd-1539308107249; Hm_lvt_4dbd859086c9667369e2c2989fa278bc=1538990886,1539054129,1539221274,1539308108; CheckCode=4VEZF0d47ko=; up_beacon_user_id_100300=1751001459734; up_page_stime_100300=1539320645796; up_beacon_vist_count_100300=4; Hm_lpvt_4dbd859086c9667369e2c2989fa278bc=1539320646; MoodleSession=889kc78275fdgf1f1ube5kltb3';
-$ouchn->index('faxue');
+//$ouchn = new Ouchn();
+//$cookie_faxue_file = 'D:\dy\py_work\selenium_work\cookie_faxue.txt';
+//$cookie_kuaiji_file = 'D:\dy\py_work\selenium_work\cookie_kuaiji.txt';
+//$img_file = 'D:\dy\py_work\selenium_work\photo.png';
+//$code_file = 'D:\dy\py_work\selenium_work\code.txt';
+//$count = 0;
+//echo "等待获取cookie...\n";
+//echo "等待获取图片...\n";
+//while (true) {
+//    if(file_exists($img_file)) {
+//        require_once 'ouchn/code.php';
+//        $v = new valite();
+//        $v->setImage($img_file);
+//        $v->getHec();
+//        $code = $v->run();
+//        file_put_contents($code_file,$code);
+//        break;
+//    }
+//    sleep(1);
+//}
+//$ouchn->cookie = 'b_t_s_100300=98572d51-f500-45a2-8e0c-2b35d4d30afd; up_first_date=2018-06-10; Hm_lvt_a1d2fe485c96ce7e0b6dcb0d5ac8fb83=1528618405; up_beacon_user_id_100300=1751001459886; up_beacon_id_100300=98572d51-f500-45a2-8e0c-2b35d4d30afd-1540170715626; Hm_lvt_4dbd859086c9667369e2c2989fa278bc=1539652956,1539738562,1540022543,1540170716; CheckCode=NtzulZB1Ps4=; up_page_stime_100300=1540170975334; up_beacon_vist_count_100300=2; Hm_lpvt_4dbd859086c9667369e2c2989fa278bc=1540170976; MoodleSession=8pt6osuofj49ob7a3er7e7grs7';
+
+//if(file_exists($cookie_faxue_file)) {
+//    $ouchn->cookie = file_get_contents($cookie_faxue_file);
+//    echo '获取法学cookie成功,开始点击...'.PHP_EOL;
+//    $ouchn->index('faxue');
+//    unlink($cookie_faxue_file);
+//    $count++;
+//    if($count >= 2) {
+//        exit();
+//    }
+//}
+//if(file_exists($cookie_kuaiji_file)) {
+//    $ouchn->cookie = file_get_contents($cookie_kuaiji_file);
+////        $ouchn->cookie = "moodle_course_format_tabtopics_course_1414=1; b_t_s_100300=98572d51-f500-45a2-8e0c-2b35d4d30afd; up_first_date=2018-06-10; Hm_lvt_a1d2fe485c96ce7e0b6dcb0d5ac8fb83=1528618405; up_beacon_user_id_100300=1751001459886; up_beacon_id_100300=98572d51-f500-45a2-8e0c-2b35d4d30afd-1555914240347; Hm_lvt_4dbd859086c9667369e2c2989fa278bc=1554974878,1555914242; firstVist=ture; banner=%3Cimg%20src%3D%22http%3A//sichuan.ouchn.cn/pluginfile.php/840266/course/section/65741/kuaiji.jpg%22%20height%3D%22233%22%20width%3D%22997%22%3E; CheckCode=76UZTDfKZAw=; up_page_stime_100300=1555919961268; up_beacon_vist_count_100300=3; Hm_lpvt_4dbd859086c9667369e2c2989fa278bc=1555919961; MoodleSession=v0t9ha5nuh9pjhmvf6gcuq7e36";
+//    echo '获取会计cookie成功,开始点击...'.PHP_EOL;
+//    $ouchn->index('kuaiji');
+//    unlink($cookie_kuaiji_file);
+//    $count++;
+//    if($count >= 2) {
+//        exit();
+//    }
+//}

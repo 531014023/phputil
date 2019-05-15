@@ -1,6 +1,5 @@
 <?php
 set_time_limit(0);
-exec("CHCP 65001");
 require_once __DIR__."/phpQuery/phpQuery.php";
 
 /**
@@ -17,6 +16,8 @@ class Ouchn
     public $username;
     public $class_map = [];
     public $class_name_map = [];
+    private $current_http_code;
+    private $http_time_out = 0;
     public function setLinks($link = null)
     {
         if(in_array($link,$this->clickLinks))
@@ -79,9 +80,14 @@ class Ouchn
 
     public function actionClickClass($key){
         echo "开始点击".$this->class_name_map[$key]."...".PHP_EOL;
+        if(!is_cli()) {
+            ob_flush();
+            flush();
+        }
         $class_arr = $this->class_map[$key];
         foreach ($class_arr as $class){
             call_user_func(array($this,$class));
+            usleep(0.5*1000*1000);
         }
     }
     public function faxue($key = null)
@@ -145,7 +151,51 @@ class Ouchn
             echo $log_name . ': ' . PHP_EOL;
             echo $content . PHP_EOL;
             echo PHP_EOL;
+            if(!is_cli()) {
+                ob_flush();
+                flush();
+            }
         }
+    }
+
+    public function saveHtml($url,$content,$httpCode){
+        $debug_backtrace = debug_backtrace();
+        $len = count($debug_backtrace);
+        foreach ($debug_backtrace as $i=>$trace){
+            if($i < $len - 1) {
+                if ($trace['function'] == 'http_get' && $debug_backtrace[$i + 1]['function'] != 'http_get') {
+                    $i++;
+                    break;
+                }
+            }else{
+                $i = 1;
+                break;
+            }
+        }
+        $class_name = $debug_backtrace[$i]['function'];
+        $dir = __DIR__.'/html';
+        if(!file_exists($dir)){
+            mkdir($dir);
+        }
+        $dir .= '/'.date('Ymd');
+        if(!file_exists($dir)){
+            mkdir($dir);
+        }
+        $file_map = $dir .'/file_map.txt';
+        $dir .= '/'.$class_name;
+        if(!file_exists($dir)){
+            mkdir($dir);
+        }
+        if($this->username) {
+            $dir .= '/' . $this->username;
+            if(!file_exists($dir)){
+                mkdir($dir);
+            }
+        }
+        $file = $dir . '/' . $httpCode.'_'.md5($url).'.html';
+        $file_map_text = $url.' => '.md5($url).PHP_EOL;
+        file_put_contents($file_map,$file_map_text,FILE_APPEND);
+        file_put_contents($file,$content);
     }
 
     public function check_log($log_name)
@@ -163,13 +213,19 @@ class Ouchn
 
     function http_get($url)
     {
+        if(strpos($url,'http') === false){
+            return '';
+        }
         $cookie = $this->cookie_file ? : dirname(__FILE__).'/ouchn/cookie.txt';
+        $ip = ip();
         $headers = [
+            'X-FORWARDED-FOR: '.$ip,
+            'CLIENT-IP: '.$ip,
             'User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'
         ];
         $ch = curl_init($url);
         curl_setopt($ch,CURLOPT_CUSTOMREQUEST,'GET');
-        curl_setopt($ch,CURLOPT_HEADER,$headers);
+        curl_setopt($ch,CURLOPT_HTTPHEADER,$headers);
         curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         if(!empty($this->cookie)) {
@@ -183,7 +239,16 @@ class Ouchn
             curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie);
         }
         $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch,CURLINFO_HTTP_CODE);
+        $this->current_http_code = $httpCode;
         curl_close($ch);
+        if($httpCode != 200 && $this->http_time_out < 2){
+            $this->http_time_out++;
+            sleep(1);
+            return $this->http_get($url);
+        }
+        $this->http_time_out = 0;
+        $this->saveHtml($url, $res, $httpCode);
         return $res;
     }
 
@@ -251,6 +316,7 @@ class Ouchn
                 break;
             }
             phpQuery::$documents = [];
+            usleep(0.2*1000*1000);
         }
         if($count < 5)
         {
@@ -322,6 +388,7 @@ class Ouchn
                     break;
                 }
             }
+            array_pop(phpQuery::$documents);
             $this->writeLog('caiwu',$href);
             $count++;
             if($count>=20){
@@ -331,6 +398,7 @@ class Ouchn
             {
                 break;
             }
+            usleep(0.2*1000*1000);
         }
         phpQuery::$documents = [];
         if($count < 5)
@@ -445,6 +513,7 @@ class Ouchn
                 break;
             }
             phpQuery::$documents = [];
+            usleep(0.2*1000*1000);
         }
         if($count < 5)
         {
